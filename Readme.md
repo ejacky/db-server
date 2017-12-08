@@ -8,7 +8,7 @@ https://web.stanford.edu/class/cs346/2015/
 https://web.stanford.edu/class/cs346/2014/
 
 ```
-part1 : paged file compnent
+part1 : paged file compnent ; 原来就提供。
 part2 : record management componet
 part3 : indexing component
 part4 : system management component
