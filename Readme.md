@@ -18,3 +18,8 @@ part6 : personal extension
 
 ## 计划
 ### 两周一个 lab
+
+## 课程信息
+### 老师 [Chris Re](http://cs.stanford.edu/~chrismre/)
+
+https://web.stanford.edu/class/cs346/2015/#staff
