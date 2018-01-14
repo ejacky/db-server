@@ -9,8 +9,6 @@
 #include <sys/types.h>
 #include "pf_internal.h"
 #include "pf_buffermgr.h"
-#include "iostream"
-using namespace std;
 
 //
 // PF_FileHandle
@@ -81,6 +79,7 @@ PF_FileHandle& PF_FileHandle::operator= (const PF_FileHandle &fileHandle)
       this->bHdrChanged = fileHandle.bHdrChanged;
       this->unixfd      = fileHandle.unixfd;
    }
+
    // Return a reference to this
    return (*this);
 }
@@ -431,9 +430,9 @@ RC PF_FileHandle::FlushPages() const
    if (bHdrChanged) {
 
       // First seek to the appropriate place
-		 if (lseek(unixfd, 0, L_SET) < 0) {
-			 return (PF_UNIX);
-		 }
+      if (lseek(unixfd, 0, L_SET) < 0)
+         return (PF_UNIX);
+
       // Write header
       int numBytes = write(unixfd,
             (char *)&hdr,

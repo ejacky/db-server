@@ -11,11 +11,6 @@
 // components will require the use of RID but not the rest of RM.
 
 #include "redbase.h"
-#include "iostream"
-#include <cassert>
-#include <cstring>
-
-using namespace std;
 
 //
 // PageNum: uniquely identifies a page in a file
@@ -27,42 +22,29 @@ typedef int PageNum;
 //
 typedef int SlotNum;
 
+
 //
 // RID: Record id interface
 //
 class RID {
+  static const PageNum INVALID_PAGE = -1;
+  static const SlotNum INVALID_SLOT = -1;
 public:
-  static const PageNum NULL_PAGE = -1;
-  static const SlotNum NULL_SLOT = -1;
-  RID()
-    :page(NULL_PAGE), slot(NULL_SLOT) {}     // Default constructor
-  RID(PageNum pageNum, SlotNum slotNum)
-    :page(pageNum), slot(slotNum) {}
-  ~RID(){}                                        // Destructor
-  
-  RC GetPageNum(PageNum &pageNum) const          // Return page number
-  { pageNum = page; return 0; }
-  RC GetSlotNum(SlotNum &slotNum) const         // Return slot number
-  { slotNum = slot; return 0; }
+    RID();                                         // Default constructor
+    RID(PageNum pageNum, SlotNum slotNum);
+    ~RID();                                        // Destructor
+    RID& operator= (const RID &rid);               // Copies RID
+    bool operator== (const RID &rid) const;
 
-  PageNum Page() const          // Return page number
-  { return page; }
-  SlotNum Slot() const          // Return slot number
-  { return slot; }
-  
-  bool operator==(const RID & rhs) const
-  {
-    PageNum p;SlotNum s;
-    rhs.GetPageNum(p);
-    rhs.GetSlotNum(s);
-    return (p == page && s == slot);
-  }
+    RC GetPageNum(PageNum &pageNum) const;         // Return page number
+    RC GetSlotNum(SlotNum &slotNum) const;         // Return slot number
+
+    RC isValidRID() const; // checks if it is a valid RID
 
 private:
   PageNum page;
   SlotNum slot;
 };
 
-ostream& operator <<(ostream & os, const RID& r);
 
-#endif // RM_RID_H
+#endif
