@@ -1,11 +1,11 @@
 ## just my mini database
+### sample project
+- https://github.com/yifeih/redbase
+- https://github.com/adityabhandari1992/cs346-redbase
 
-https://github.com/yifeih/redbase
-https://github.com/junkumar/redbase
-
-
-https://web.stanford.edu/class/cs346/2015/
-https://web.stanford.edu/class/cs346/2014/
+### course website
+- https://web.stanford.edu/class/cs346/2015/
+- https://web.stanford.edu/class/cs346/2014/
 
 ```
 part1 : paged file compnent ; 原来就提供。
