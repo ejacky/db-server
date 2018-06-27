@@ -16,15 +16,15 @@ part5 : query lanugage component https://web.stanford.edu/class/cs346/2014/ql.ht
 part6 : personal extension
 ```
 
-## 安装
+## install
 
 ```shell
 $ make
 ```
-## 计划
-### 两周一个 lab
+## plan
+### xx lab
 
-## 课程信息
-### 老师 [Chris Re](http://cs.stanford.edu/~chrismre/)
+## course info
+### teacher [Chris Re](http://cs.stanford.edu/~chrismre/)
 
 https://web.stanford.edu/class/cs346/2015/#staff
