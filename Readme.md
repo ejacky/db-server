@@ -12,10 +12,15 @@ part1 : paged file compnent ; 原来就提供。
 part2 : record management componet
 part3 : indexing component
 part4 : system management component
-part5 : query lanugage component
+part5 : query lanugage component https://web.stanford.edu/class/cs346/2014/ql.html
 part6 : personal extension
 ```
 
+## 安装
+
+```shell
+$ make
+```
 ## 计划
 ### 两周一个 lab
 
