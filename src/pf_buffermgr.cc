@@ -248,6 +248,8 @@ RC PF_BufferMgr::GetPage(int fd, PageNum pageNum, char **ppBuffer,
          return (rc);
    }
 
+   // cout << "Page pinned: " << pageNum << " count: " << bufTable[slot].pinCount << endl;
+
    // Point ppBuffer to page
    *ppBuffer = bufTable[slot].pData;
 
@@ -299,6 +301,9 @@ RC PF_BufferMgr::AllocatePage(int fd, PageNum pageNum, char **ppBuffer)
 #ifdef PF_LOG
    WriteLog("Succesfully allocated page.\n");
 #endif
+
+
+   // cout << "Page pinned: " << pageNum << " count: " << bufTable[slot].pinCount << endl;
 
    // Point ppBuffer to page
    *ppBuffer = bufTable[slot].pData;
@@ -387,6 +392,9 @@ RC PF_BufferMgr::UnpinPage(int fd, PageNum pageNum)
             (rc = LinkHead (slot)))
          return (rc);
    }
+
+
+   // cout << "Page unpinned: " << pageNum << " count: " << bufTable[slot].pinCount << endl;
 
    // Return ok
    return (0);
@@ -951,7 +959,7 @@ RC PF_BufferMgr::AllocateBlock(char *&buffer)
       return rc;
 
    // Create artificial page number (just needs to be unique for hash table)
-   PageNum pageNum = PageNum(bufTable[slot].pData);
+   PageNum pageNum = bufTable[slot].pData - (char*)0;
 
    // Insert the page into the hash table, and initialize the page description entry
    if ((rc = hashTable.Insert(MEMORY_FD, pageNum, slot) != OK_RC) ||
@@ -976,5 +984,5 @@ RC PF_BufferMgr::AllocateBlock(char *&buffer)
 //
 RC PF_BufferMgr::DisposeBlock(char* buffer)
 {
-   return UnpinPage(MEMORY_FD, PageNum(buffer));
+   return UnpinPage(MEMORY_FD, buffer - (char*)0);
 }
