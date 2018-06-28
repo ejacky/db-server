@@ -21,6 +21,28 @@ part6 : personal extension
 ```shell
 $ make
 ```
+## debug
+
+### generate test 
+```
+$make testers
+```
+### gdb
+```shell
+$gdb fp_test1
+
+(gdb)break main
+
+(gdb)run
+
+(gdb)step
+(gdb)next
+
+(gdb)print fileName
+
+```
+### valgrind
+
 ## plan
 ### xx lab
 
