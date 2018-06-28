@@ -32,6 +32,7 @@ $make testers
 $gdb fp_test1
 
 (gdb)break main
+(gdb)break pf_test1:283
 
 (gdb)run
 
@@ -41,6 +42,8 @@ $gdb fp_test1
 (gdb)print fileName
 
 ```
+https://ccrma.stanford.edu/~jos/stkintro/Useful_commands_gdb.html
+
 ### valgrind
 
 ## plan
