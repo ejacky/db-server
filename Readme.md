@@ -53,3 +53,6 @@ https://ccrma.stanford.edu/~jos/stkintro/Useful_commands_gdb.html
 ### teacher [Chris Re](http://cs.stanford.edu/~chrismre/)
 
 https://web.stanford.edu/class/cs346/2015/#staff
+
+## reference
+http://coding-geek.com/how-databases-work/
