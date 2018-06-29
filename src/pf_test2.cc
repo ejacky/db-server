@@ -39,6 +39,46 @@ extern void PF_Statistics();
 //
 #define FILE1	"file1"
 
+
+RC PrintFile(PF_FileHandle &fh)
+{
+   PF_PageHandle ph;
+   RC            rc;
+   char          *pData;
+   PageNum       pageNum, temp;
+
+   cout << "Reading file\n";
+
+   if ((rc = fh.GetFirstPage(ph)))
+      return(rc);
+
+   do {
+      if ((rc = ph.GetData(pData)) ||
+            (rc = ph.GetPageNum(pageNum)))
+         return(rc);
+
+      memcpy((char *)&temp, pData, sizeof(PageNum));
+      cout << "Got page: " << (int)pageNum << " " << (int)temp << "\n";
+
+      //    if (memcmp(pData + PF_PAGE_SIZE - sizeof(PageNum),
+      //	       pData, sizeof(PageNum))) {
+      //      memcpy(&temp, pData + PF_PAGE_SIZE - sizeof(PageNum), sizeof(PageNum));
+      //      cout << "ERROR!" << (int)temp << "\n";
+      //      return (-1);
+      //    }
+      if ((rc = fh.UnpinPage(pageNum)))
+         return(rc);
+   } while (!(rc = fh.GetNextPage(pageNum, ph)));
+
+   if (rc != PF_EOF)
+      return(rc);
+
+   cout << "EOF reached\n";
+
+   // Return ok
+   return (0);
+}
+
 RC TestPF()
 {
    PF_Manager pfm;
@@ -155,6 +195,11 @@ RC TestPF()
 
 #endif          // PF_STATS
 
+   cout << "Just Test: print file1\n";
+
+   if ((rc = PrintFile(fh)))
+      return(rc);
+
    // Goal here is to push out of the buffer manager the old pages by
    // asking for new ones.  At the end the LRU algorithm should ensure that
    // none of the original pages lie in memory
@@ -173,6 +218,11 @@ RC TestPF()
       if ((rc = fh.UnpinPage(i+PF_BUFFER_SIZE)))
          return(rc);
    }
+
+  cout << "Just Test: after Allocating an additional ,print file1\n";
+
+   if ((rc = PrintFile(fh)))
+      return(rc);
 
    // Now refetch the original pages
    cout << "Now asking for the original pages again.\n";
