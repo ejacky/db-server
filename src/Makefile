@@ -43,7 +43,7 @@ QL_SOURCES     = ql_manager.cc ql_operators.cc ql_error.cc
 EX_SOURCES	   = ex_commlayer.cc ex_error.cc
 UTILS_SOURCES  = dbcreate.cc dbdestroy.cc redbase.cc
 PARSER_SOURCES = scan.c parse.c nodes.c interp.c
-TESTER_SOURCES = pf_test1.cc pf_test2.cc pf_test3.cc
+TESTER_SOURCES = pf_test1.cc pf_test2.cc pf_test3.cc rm_test.cc
 #TESTER_SOURCES = parser_test.cc pf_test1.cc pf_test2.cc pf_test3.cc rm_test.cc ix_test.cc ix_testkpg.cc
 
 PF_OBJECTS     = $(addprefix $(BUILD_DIR), $(PF_SOURCES:.cc=.o))
@@ -55,7 +55,7 @@ EX_OBJECTS     = $(addprefix $(BUILD_DIR), $(EX_SOURCES:.cc=.o))
 UTILS_OBJECTS  = $(addprefix $(BUILD_DIR), $(UTILS_SOURCES:.cc=.o))
 PARSER_OBJECTS = $(addprefix $(BUILD_DIR), $(PARSER_SOURCES:.c=.o))
 TESTER_OBJECTS = $(addprefix $(BUILD_DIR), $(TESTER_SOURCES:.cc=.o))
-OBJECTS        = $(PF_OBJECTS) $(TESTER_OBJECTS)
+OBJECTS        = $(PF_OBJECTS) $(RM_OBJECTS) $(TESTER_OBJECTS)
 #$(RM_OBJECTS) $(IX_OBJECTS) \
                  $(SM_OBJECTS) $(QL_OBJECTS) $(EX_OBJECTS) \
                  $(PARSER_OBJECTS) $(TESTER_OBJECTS) $(UTILS_OBJECTS)
@@ -67,7 +67,7 @@ LIBRARY_SM     = $(LIB_DIR)libsm.a
 LIBRARY_QL     = $(LIB_DIR)libql.a
 LIBRARY_EX     = $(LIB_DIR)libex.a
 LIBRARY_PARSER = $(LIB_DIR)libparser.a
-LIBRARIES      = $(LIBRARY_PF) 
+LIBRARIES      = $(LIBRARY_PF) $(LIBRARY_RM)
 #$(LIBRARY_RM) $(LIBRARY_IX) \
                  $(LIBRARY_SM) $(LIBRARY_QL) $(LIBRARY_EX) $(LIBRARY_PARSER)
 
@@ -75,7 +75,7 @@ UTILS          = $(UTILS_SOURCES:.cc=)
 TESTS          = $(TESTER_SOURCES:.cc=)
 EXECUTABLES    = $(UTILS) $(TESTS)
 
-LIBS           = -lpf
+LIBS           = -lpf -lrm
 #LIBS           = -lparser -lql -lsm -lix -lrm -lpf -lex
 
 #

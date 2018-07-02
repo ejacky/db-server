@@ -1,282 +1,397 @@
 //
 // File:        rm_filescan.cc
-// Description: RM_FileScan handles scans through a file
-// Author:      Yifei Huang (yifei@stanford.edu)
+// Description: RM_FileScan class implementation
+// Authors:     Aditya Bhandari (adityasb@stanford.edu)
 //
 
-#include <unistd.h>
-#include <sys/types.h>
-#include "pf.h"
+#include <iostream>
+#include <cstring>
+#include <string>
 #include "rm_internal.h"
-#include <stdlib.h>
+#include "rm.h"
+using namespace std;
 
-
-RM_FileScan::RM_FileScan(){
-  openScan = false; // initially a filescan is not valid
-  value = NULL;
-  initializedValue = false;
-  hasPagePinned = false;
-  scanEnded = true;
+// Default constructor
+RM_FileScan::RM_FileScan() {
+    // Set open scan flag to false
+    scanOpen = FALSE;
 }
 
-RM_FileScan::~RM_FileScan(){
-  if(scanEnded == false && hasPagePinned == true && openScan == true){
-    fileHandle->pfh.UnpinPage(scanPage);
-  }
-  if (initializedValue == true){ // free any memory not freed
-    free(value);
-    initializedValue = false;
-  }
+// Destructor
+RM_FileScan::~RM_FileScan() {
+    // Nothing to free
 }
 
-/*
- * The following functions are comparison functions that return 0 if 
- * the two objects are equal, <0 if the first value is smaller, and
- * >0 if the second value is smaller.
- * They must take in an attribute type and attribute length, which 
- * determines the basis to compare the values on.
- */
-bool equal(void * value1, void * value2, AttrType attrtype, int attrLength){
-  switch(attrtype){
-    case FLOAT: return (*(float *)value1 == *(float*)value2);
-    case INT: return (*(int *)value1 == *(int *)value2) ;
-    default:
-      return (strncmp((char *) value1, (char *) value2, attrLength) == 0); 
-  }
-}
-
-bool less_than(void * value1, void * value2, AttrType attrtype, int attrLength){
-  switch(attrtype){
-    case FLOAT: return (*(float *)value1 < *(float*)value2);
-    case INT: return (*(int *)value1 < *(int *)value2) ;
-    default: 
-      return (strncmp((char *) value1, (char *) value2, attrLength) < 0);
-  }
-}
-
-bool greater_than(void * value1, void * value2, AttrType attrtype, int attrLength){
-  switch(attrtype){
-    case FLOAT: return (*(float *)value1 > *(float*)value2);
-    case INT: return (*(int *)value1 > *(int *)value2) ;
-    default: 
-      return (strncmp((char *) value1, (char *) value2, attrLength) > 0);
-  }
-}
-
-bool less_than_or_eq_to(void * value1, void * value2, AttrType attrtype, int attrLength){
-  switch(attrtype){
-    case FLOAT: return (*(float *)value1 <= *(float*)value2);
-    case INT: return (*(int *)value1 <= *(int *)value2) ;
-    default: 
-      return (strncmp((char *) value1, (char *) value2, attrLength) <= 0);
-  }
-}
-
-bool greater_than_or_eq_to(void * value1, void * value2, AttrType attrtype, int attrLength){
-  switch(attrtype){
-    case FLOAT: return (*(float *)value1 >= *(float*)value2);
-    case INT: return (*(int *)value1 >= *(int *)value2) ;
-    default: 
-      return (strncmp((char *) value1, (char *) value2, attrLength) >= 0);
-  }
-}
-
-bool not_equal(void * value1, void * value2, AttrType attrtype, int attrLength){
-  switch(attrtype){
-    case FLOAT: return (*(float *)value1 != *(float*)value2);
-    case INT: return (*(int *)value1 != *(int *)value2) ;
-    default: 
-      return (strncmp((char *) value1, (char *) value2, attrLength) != 0);
-  }
-}
-
-/*
- * Sets up the parameters in FileScan to associate it with certain
- * scan parameters. It is an error to reset the scan without closing
- * it first.
- */
-RC RM_FileScan::OpenScan (const RM_FileHandle &fileHandle,
-                  AttrType   attrType,
-                  int        attrLength,
-                  int        attrOffset,
-                  CompOp     compOp,
-                  void       *value,
-                  ClientHint pinHint) {
-  // If this is already associated with a scan, return immediately as an error
-  if (openScan == true)
-    return (RM_INVALIDSCAN);
-
-  // Check that the fileHandle is valid
-  if(fileHandle.isValidFileHeader())
-    this->fileHandle = const_cast<RM_FileHandle*>(&fileHandle);
-  else
-    return (RM_INVALIDFILE);
-
-  this->value = NULL;
-  // Set the comparator to the appropriate function
-  this->compOp = compOp;
-  switch(compOp){
-    case EQ_OP : comparator = &equal; break;
-    case LT_OP : comparator = &less_than; break;
-    case GT_OP : comparator = &greater_than; break;
-    case LE_OP : comparator = &less_than_or_eq_to; break;
-    case GE_OP : comparator = &greater_than_or_eq_to; break;
-    case NE_OP : comparator = &not_equal; break;
-    case NO_OP : comparator = NULL; break;
-    default: return (RM_INVALIDSCAN);
-  }
-
-  int recSize = (this->fileHandle)->getRecordSize();
-  // If there is a comparison, update the comparison parameters.
-  if(this->compOp != NO_OP){
-    // Check that the attribute offset and sizes are compatible with given
-    // FileHandle
-    if((attrOffset + attrLength) > recSize || attrOffset < 0 || attrOffset > MAXSTRINGLEN)
-      return (RM_INVALIDSCAN);
-    this->attrOffset = attrOffset;
-    this->attrLength = attrLength;
-
-    // Allocate the appropraite memory to store the value being compared
-    if(attrType == FLOAT || attrType == INT){
-      if(attrLength != 4)
-        return (RM_INVALIDSCAN);
-      this->value = (void *) malloc(4);
-      memcpy(this->value, value, 4);
-      initializedValue = true;
+// Method: OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int attrLength,
+//                  int attrOffset, CompOp compOp, void *value, ClientHint pinHint = NO_HINT)
+// Initialize a file scan
+/* Steps:
+    1) Initialize the class variables
+        - Store attrType, attrLength, attrOffset, compOp, value and pinHint
+        - Store the page number and slot number of the first (non-header) page of the file
+    2) Unpin the header and data pages
+*/
+RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int attrLength,
+                         int attrOffset, CompOp compOp, void *value, ClientHint pinHint) {
+    // Check for erroneous input
+    if (attrType != INT && attrType != FLOAT && attrType != STRING) {
+        return RM_INVALID_ATTRIBUTE;
     }
-    else if(attrType == STRING){
-      this->value = (void *) malloc(attrLength);
-      memcpy(this->value, value, attrLength);
-      initializedValue = true;
+
+    if (!fileHandle.isOpen) {
+        return RM_FILE_CLOSED;
     }
-    else{
-      return (RM_INVALIDSCAN);
+
+    int recordSize = (fileHandle.fileHeader).recordSize;
+    if (attrOffset > recordSize || attrOffset < 0) {
+        return RM_INVALID_OFFSET;
     }
+
+    if (compOp != NO_OP && compOp != EQ_OP && compOp != NE_OP && compOp != LT_OP &&
+        compOp != GT_OP && compOp != LE_OP && compOp != GE_OP) {
+        return RM_INVALID_OPERATOR;
+    }
+
+    if ((attrType == INT || attrType == FLOAT) && attrLength != 4) {
+        return RM_ATTRIBUTE_NOT_CONSISTENT;
+    }
+    if (attrType == STRING) {
+        if (attrLength < 1 || attrLength > MAXSTRINGLEN) {
+            return RM_ATTRIBUTE_NOT_CONSISTENT;
+        }
+    }
+
+    // If the value is a null pointer, set compOp to NO_OP
+    if (compOp != NO_OP && value == NULL) {
+        compOp = NO_OP;
+    }
+
+    // Store the class variables
+    this->fileHandle = fileHandle;
     this->attrType = attrType;
-  }
+    this->attrLength = attrLength;
+    this->attrOffset = attrOffset;
+    this->compOp = compOp;
+    this->value = value;
+    this->pinHint = pinHint;
 
-  // open the scan
-  openScan = true;
-  scanEnded = false;
+    // Set the scan open flag
+    scanOpen = TRUE;
 
-  // set up scan parameters:
-  numRecOnPage = 0;
-  numSeenOnPage = 0;
-  useNextPage = true;
-  scanPage = 0;
-  scanSlot = BEGIN_SCAN;
-  numSeenOnPage = 0;
-  hasPagePinned = false;
-  return (0);
-} 
+    // Declare an integer for return code
+    int rc;
 
-/*
- * Retrieves the number of records on a given page specified by an 
- * open PF_PageHandle. Returns that number in numRecords
- */
-RC RM_FileScan::GetNumRecOnPage(PF_PageHandle &ph, int &numRecords){
-  RC rc;
-  char *bitmap;
-  struct RM_PageHeader *pageheader;
-  if((rc = (this->fileHandle)->GetPageDataAndBitmap(ph, bitmap, pageheader)))
-      return (rc);
-  numRecords = pageheader->numRecords;
-  return (0);
+    // Get the page number of the first page (header)
+    PF_FileHandle pfFH = fileHandle.pfFH;
+    PF_PageHandle pfPH;
+    if ((rc = pfFH.GetFirstPage(pfPH))) {
+        // Return the error from the PF FileHandle
+        return rc;
+    }
+
+    PageNum headerPageNumber;
+    if ((rc = pfPH.GetPageNum(headerPageNumber))) {
+        // Return the error from the PF PageHandle
+        return rc;
+    }
+
+    // Get the page number of the first data page
+    PageNum pageNumber;
+    bool pageFound = true;
+    if ((rc = pfFH.GetNextPage(headerPageNumber, pfPH))) {
+        if (rc == PF_EOF) {
+            pageNumber = RM_NO_FREE_PAGE;
+            pageFound = false;
+        }
+        else {
+            // Return the error from the PF FileHandle
+            return rc;
+        }
+    }
+    if (pageFound) {
+        if ((rc = pfPH.GetPageNum(pageNumber))) {
+            // Return the error from the PF PageHandle
+            return rc;
+        }
+    }
+
+    // Set the page and slot numbers
+    this->pageNumber = pageNumber;
+    this->slotNumber = 1;
+
+    // Unpin the header and data page
+    if ((rc = pfFH.UnpinPage(headerPageNumber))) {
+        // Return the error from the PF FileHandle
+        return rc;
+    }
+    if (pageFound) {
+        if ((rc = pfFH.UnpinPage(pageNumber))) {
+            // Return the error from the PF FileHandle
+            return rc;
+        }
+    }
+
+    // Return OK
+    return OK_RC;
 }
 
-/*
- * Retrieves the next record that satisfies the scan conditions
- */
+// Method: GetNextRec(RM_Record &rec)
+// Get the next matching record
+/* Steps:
+    1) Get the page using the page number
+    2) Check the slot number in the bitmap in the page
+    3) If filled, get the record data from the page
+    4) Get the required attribute at the given offset
+    5) Compare the attribute with the given value
+    6) If it satisfies the condition
+        - Create a new record and fill its data and RID
+        - Point rec to the new record
+    7) Increment the slot number
+        - If not the last slot, increment by 1
+        - Else, get the next page of the file
+            - If PF_EOF, return RM_EOF
+            - Set the new page number
+            - Set slot number to 1
+    8) Follow the pin hint
+    9) If next record was not found, go to (2)
+*/
 RC RM_FileScan::GetNextRec(RM_Record &rec) {
-  // If the scan has ended, or is not valid, return immediately
-  if(scanEnded == true)
-    return (RM_EOF);
-  if(openScan == false)
-    return (RM_INVALIDSCAN);
-  hasPagePinned = true;
-  
-  RC rc;
-  while(true){
-    // Retrieve next record
-    RM_Record temprec;
-    if((rc=fileHandle->GetNextRecord(scanPage, scanSlot, temprec, currentPH, useNextPage))){
-      if(rc == RM_EOF){
-        hasPagePinned = false;
-        scanEnded = true;
-      }
-      return (rc);
+    // Return error if the scan is closed
+    if (!scanOpen) {
+        return RM_SCAN_CLOSED;
     }
-    hasPagePinned = true;
-    // If we retrieved a record on the next page, reset numRecOnPage to
-    // reflect the number of records seen on this new current page
-    if(useNextPage){
-      GetNumRecOnPage(currentPH, numRecOnPage);
-      useNextPage = false;
-      numSeenOnPage = 0;
-      if(numRecOnPage == 1)
-        currentPH.GetPageNum(scanPage);
-    }
-    numSeenOnPage++; // update # of records seen on this page
 
-    // If we've seen all the record on this page, then next time, we 
-    // need to look on the next page, not this page, so unpin the page
-    // and set the indicator (useNextPage)
-    if(numRecOnPage == numSeenOnPage){
-      useNextPage = true;
-      //printf("unpin page in filescan\n");
-      if(rc = fileHandle->pfh.UnpinPage(scanPage)){
-        return (rc);
-      }
-      hasPagePinned = false;
+    // Delete the record data if it is already valid
+    if (rec.isValid) {
+        rec.isValid = FALSE;
+        delete[] rec.pData;
     }
-   
-    // Retrieves the RID of the scan to update the progress of the scan
-    RID rid;
-    temprec.GetRid(rid);
-    rid.GetPageNum(scanPage);
-    rid.GetSlotNum(scanSlot);
 
-    // Check to see if it satisfies the scan comparison, and if it does,
-    // exit the function, returning the record.
-    char *pData;
-    if((rc = temprec.GetData(pData))){
-      return (rc);
+    // Declare an integer for the return code
+    int rc;
+
+    // Declare required variables
+    PF_FileHandle pfFH = fileHandle.pfFH;
+    PF_PageHandle pfPH;
+    char* pageData;
+    char* bitmap;
+
+    // If the file is empty
+    if (pageNumber == RM_NO_FREE_PAGE) {
+        return RM_EOF;
     }
-    if(compOp != NO_OP){
-      bool satisfies = (* comparator)(pData + attrOffset, this->value, attrType, attrLength);
-      if(satisfies){
-        rec = temprec;
-        break;
-      }
+
+    // Get the page corresponding to the page number
+    if ((rc = pfFH.GetThisPage(pageNumber, pfPH))) {
+        return rc;
     }
-    else{
-      rec = temprec; // if no comparison, just return the record
-      break;
+    // Get the bitmap on the page
+    if ((rc = pfPH.GetData(pageData))) {
+        // Return the error from the PF PageHandle
+        return rc;
     }
-  }
-  return (0);
+    bitmap = pageData + sizeof(RM_PageHeader);
+
+    // Do while next record is not found
+    bool recordMatch = false;
+    while(!recordMatch) {
+        // Check whether the slot in the bitmap is filled
+        if (isBitFilled(slotNumber, bitmap)) {
+            // Get the record data from the page
+            int recordOffset = fileHandle.getRecordOffset(slotNumber);
+            char* recordData = pageData + recordOffset;
+
+            // Check if the operator is NO_OP
+            if (compOp == NO_OP) {
+                recordMatch = true;
+            }
+            // If the attribute is integer
+            else if (attrType == INT) {
+                int recordValue = getIntegerValue(recordData);
+                int givenValue = *static_cast<int*>(value);
+                recordMatch = matchRecord(recordValue, givenValue);
+            }
+            // If the attribute is float
+            else if (attrType == FLOAT) {
+                float recordValue = getFloatValue(recordData);
+                float givenValue = *static_cast<float*>(value);
+                recordMatch = matchRecord(recordValue, givenValue);
+            }
+            // If the attribute is string
+            else if (attrType == STRING) {
+                string recordValue(recordData + attrOffset);
+                char* givenValueChar = static_cast<char*>(value);
+                string givenValue(givenValueChar);
+                recordMatch = matchRecord(recordValue, givenValue);
+            }
+
+            // If the record matches
+            if (recordMatch) {
+                // Set valid flag of record to true
+                rec.isValid = TRUE;
+
+                // Set the data in the new record
+                int recordSize = (fileHandle.fileHeader).recordSize;
+                char* newPData = new char[recordSize];
+                memcpy(newPData, recordData, recordSize);
+                rec.pData = newPData;
+
+                // Set the RID and size of the new record
+                RID newRid(pageNumber, slotNumber);
+                rec.rid = newRid;
+                rec.recordSize = recordSize;
+            }
+        }
+
+        // Increment the slot number
+        // Check if this is the last slot
+        if (slotNumber == (fileHandle.fileHeader).numberRecordsOnPage) {
+            // Unpin the previous page
+            if ((rc = pfFH.UnpinPage(pageNumber))) {
+                // Return the error from the PF FileHandle
+                return rc;
+            }
+
+            // Get the next page of the file
+            rc = pfFH.GetNextPage(pageNumber, pfPH);
+            if (rc == PF_EOF) {
+                pageNumber = RM_NO_FREE_PAGE;
+
+                // Return OK if record already found, else return EOF
+                if (recordMatch) return OK_RC;
+                else return RM_EOF;
+            }
+            else if (rc) {
+                // Return the error from the PF FileHandle
+                return rc;
+            }
+
+            // Set the new page number
+            if ((rc = pfPH.GetPageNum(pageNumber))) {
+                // Return the error from the PF PageHandle
+                return rc;
+            }
+
+            // Set slot number to 1
+            slotNumber = 1;
+
+            // Set the new page data and bitmap
+            if ((rc = pfPH.GetData(pageData))) {
+                // Return the error from the PF PageHandle
+                return rc;
+            }
+            bitmap = pageData + sizeof(RM_PageHeader);
+        }
+        else {
+            slotNumber++;
+        }
+    }
+
+    // If no hint is given, unpin immediately
+    if (pinHint == NO_HINT) {
+        // Unpin the page
+        if ((rc = pfFH.UnpinPage(pageNumber))) {
+            // Return the error from the PF FileHandle
+            return rc;
+        }
+    }
+
+    // Return OK
+    return OK_RC;
+}
+
+// Method: CloseScan()
+// Close the file scan
+/* Steps:
+    1) Return error if the scan is not open
+    2) Update the scan open flag
+*/
+RC RM_FileScan::CloseScan() {
+    // Return error if the scan is not open
+    if (!scanOpen) {
+        return RM_SCAN_CLOSED;
+    }
+
+    // Set open scan flag to false
+    scanOpen = FALSE;
+
+    // Return OK
+    return OK_RC;
 }
 
 
-/*
- * Closes a scan, freeing any memory that was allocated to store the value
- * being compared, and unpinning any pages that are still pinned
- * by the scan.
- */
-RC RM_FileScan::CloseScan () {
-  RC rc;
-  if(openScan == false){
-    return (RM_INVALIDSCAN);
-  }
-  if(hasPagePinned == true){
-    //printf("unpinning page\n");
-    if((rc = fileHandle->pfh.UnpinPage(scanPage)))
-      return (rc);
-  }
-  if(initializedValue == true){
-    free(this->value);
-    initializedValue = false;
-  }
-  openScan = false;
-  return (0);
+// Method: int getIntegerValue(char* recordData)
+// Get integer attribute value
+int RM_FileScan::getIntegerValue(char* recordData) {
+    int recordValue;
+    char* attrPointer = recordData + attrOffset;
+    memcpy(&recordValue, attrPointer, sizeof(recordValue));
+    return recordValue;
+}
+
+// Method: float getFloatValue(char* recordData)
+// Get float attribute value
+float RM_FileScan::getFloatValue(char* recordData) {
+    float recordValue;
+    char* attrPointer = recordData + attrOffset;
+    memcpy(&recordValue, attrPointer, sizeof(recordValue));
+    return recordValue;
+}
+
+// Method: char* getStringValue(char* recordData)
+// Get string attribute value
+string RM_FileScan::getStringValue(char* recordData) {
+    string recordValue = "";
+    char* attrPointer = recordData + attrOffset;
+    for (int i=0; i<attrLength; i++) {
+        recordValue += attrPointer[i];
+    }
+    return recordValue;
+}
+
+// Method: bool isBitFilled(int bitNumber, char* bitmap)
+// Check whether a slot is filled
+bool RM_FileScan::isBitFilled(int bitNumber, char* bitmap) {
+    // Change bit number to start from 0
+    bitNumber--;
+
+    // Calculate the byte number (start from 0)
+    int byteNumber = bitNumber/8;
+    char currentByte = bitmap[byteNumber];
+
+    // Calculate the bit offset in the current byte
+    int bitOffset = bitNumber - (byteNumber*8);
+
+    // Return whether the bit is 1
+    return ((currentByte | (0x80 >> bitOffset)) == currentByte);
+}
+
+// Template method: matchRecord(T recordValue, T givenValue, CompOp compOp)
+// Match the record value with the given value
+template<typename T>
+bool RM_FileScan::matchRecord(T recordValue, T givenValue) {
+    bool recordMatch = false;
+    switch(compOp) {
+        case EQ_OP:
+            if (recordValue == givenValue) recordMatch = true;
+            break;
+        case LT_OP:
+            if (recordValue < givenValue) recordMatch = true;
+            break;
+        case GT_OP:
+            if (recordValue > givenValue) recordMatch = true;
+            break;
+        case LE_OP:
+            if (recordValue <= givenValue) recordMatch = true;
+            break;
+        case GE_OP:
+            if (recordValue >= givenValue) recordMatch = true;
+            break;
+        case NE_OP:
+            if (recordValue != givenValue) recordMatch = true;
+            break;
+        default:
+            break;
+    }
+    return recordMatch;
 }

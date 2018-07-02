@@ -1,62 +1,84 @@
 //
 // File:        rm_rid.cc
-// Description: rm_rid represents a RID
-// Author:      Yifei Huang (yifei@stanford.edu)
+// Description: RID class implementation
+// Authors:     Aditya Bhandari (adityasb@stanford.edu)
 //
-#include "rm_rid.h"
+
 #include "rm_internal.h"
+#include "rm_rid.h"
+using namespace std;
 
-RID::RID(){
-  page = INVALID_PAGE; // initially the RID refers to invalid page/slot
-  slot = INVALID_SLOT;
+// Default constructor
+RID::RID() {
+    // Set the viable flag to false
+    this->isViable = FALSE;
 }
 
+// Constructor with PageNum and SlotNum given
 RID::RID(PageNum pageNum, SlotNum slotNum) {
-  page = pageNum;
-  slot = slotNum;
+    // Copy the page number and slot number into the local variables
+    this->pageNumber = pageNum;
+    this->slotNumber = slotNum;
+
+    // Set the viable flag to true
+    this->isViable = TRUE;
 }
 
-RID::~RID(){}
-
-/*
- * Copies contents of one RID to another
- */
-RID& RID::operator= (const RID &rid){
-  if (this != &rid){
-    this->page = rid.page;
-    this->slot = rid.slot;
-  }
-  return (*this);
+// Destructor
+RID::~RID() {
+    // Nothing to free
 }
 
-bool RID::operator== (const RID &rid) const{
-  return (this->page == rid.page && this->slot == rid.slot);
+// Copy constructor
+RID::RID(const RID &rid) {
+    // Copy the page number, slot number and viable flag
+    this->pageNumber = rid.pageNumber;
+    this->slotNumber = rid.slotNumber;
+    this->isViable = rid.isViable;
 }
 
-/*
- * Returns the page number of an RID 
- */
+// Overload =
+RID& RID::operator=(const RID &rid) {
+    // Check for self-assignment
+    if (this != &rid) {
+        // Copy the page number, slot number and viable flag
+        this->pageNumber = rid.pageNumber;
+        this->slotNumber = rid.slotNumber;
+        this->isViable = rid.isViable;
+    }
+
+    // Return a reference to this
+    return (*this);
+}
+
+// Method: GetPageNum(PageNum &pageNum) const
+// Return page number
 RC RID::GetPageNum(PageNum &pageNum) const {
-  //if(page == INVALID_PAGE) return RM_INVALIDRID;
-  pageNum = page;
-  return 0;
+    // If the RID is not viable, return a positive error
+    if (!isViable) {
+        return RID_NOT_VIABLE;
+    }
+    else {
+        // Set pageNum to the page number of the RID
+        pageNum = this->pageNumber;
+
+        // Return OK
+        return OK_RC;
+    }
 }
 
-/*
- * Returns the page number of an RID o
- */
+// Method: GetSlotNum(SlotNum &slotNum) const
+// Return slot number
 RC RID::GetSlotNum(SlotNum &slotNum) const {
-  //if(slot == INVALID_SLOT) return RM_INVALIDRID;
-  slotNum = slot;
-  return 0;
-}
+    // If the RID is not viable, return a positive error
+    if (!isViable) {
+        return RID_NOT_VIABLE;
+    }
+    else {
+        // Set slotNum to the slot number of the RID
+        slotNum = this->slotNumber;
 
-/*
- * Checks that this is a valid RID
- */
-RC RID::isValidRID() const{
-  if(page > 0 && slot >= 0)
-    return 0;
-  else
-    return RM_INVALIDRID;
+        // Return OK
+        return OK_RC;
+    }
 }

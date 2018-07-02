@@ -1,15 +1,16 @@
 //
 // File:        rm_error.cc
-// Description: RM_PrintError functions
-// Authors:     Hugo Rivero (rivero@cs.stanford.edu)
-//              Dallan Quass (quass@cs.stanford.edu)
-//              Yifei Huang (yifei@stanford.edu)
+// Description: RM_PrintError implementation
+// Authors:     Aditya Bhandari (adityasb@stanford.edu)
 //
 
 #include <cerrno>
 #include <cstdio>
+#include <cstring>
+#include <string>
 #include <iostream>
 #include "rm_internal.h"
+#include "rm.h"
 
 using namespace std;
 
@@ -17,28 +18,32 @@ using namespace std;
 // Error table
 //
 static char *RM_WarnMsg[] = {
-  (char*)"invalid RID",
-  (char*)"bad record size",
-  (char*)"invalid record object",
-  (char*)"invalid bit operation",
-  (char*)"page is full",
-  (char*)"invalid file",
-  (char*)"invalid file handle",
-  (char*)"invalid file scan",
-  (char*)"end of page",
+  (char*)"record size is too large",
+  (char*)"record size is too small",
+  (char*)"file is already open",
+  (char*)"file is closed",
+  (char*)"record is not valid",
+  (char*)"slot number is not valid",
+  (char*)"page number is not valid",
+  (char*)"attributes are not consistent",
+  (char*)"scan is not open",
+  (char*)"file name is not valid",
+  (char*)"attribute type is not valid",
+  (char*)"attribute offset is not valid",
+  (char*)"operator is not valid",
+  (char*)"record is null pointer",
   (char*)"end of file",
-  (char*)"invalid filename"
 };
 
 static char *RM_ErrorMsg[] = {
-  (char*)"RM error"
+  (char*)"invalid file name",
+  (char*)"inconsistent bitmap on file page"
 };
 
 //
 // RM_PrintError
 //
-// Desc: Send a message corresponding to a RM return code to cerr
-//       Assumes PF_UNIX is last valid RM return code
+// Desc: Send a message corresponding to an RM return code to cerr
 // In:   rc - return code for which a message is desired
 //
 void RM_PrintError(RC rc)
@@ -51,7 +56,7 @@ void RM_PrintError(RC rc)
   else if (-rc >= -START_RM_ERR && -rc < -RM_LASTERROR)
     // Print error
     cerr << "RM error: " << RM_ErrorMsg[-rc + START_RM_ERR] << "\n";
-  else if (rc == PF_UNIX)
+  else if (rc == RM_UNIX)
 #ifdef PC
       cerr << "OS error\n";
 #else

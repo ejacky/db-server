@@ -1,82 +1,85 @@
 //
 // File:        rm_record.cc
-// Description: RM_Record represents a record in a file
-// Author:      Yifei Huang (yifei@stanford.edu)
+// Description: RM_Record class implementation
+// Authors:     Aditya Bhandari (adityasb@stanford.edu)
 //
 
-#include <unistd.h>
-#include <sys/types.h>
-#include "pf.h"
+#include <string>
+#include <cstring>
+#include "rm.h"
 #include "rm_internal.h"
+#include "rm_rid.h"
+using namespace std;
 
-
-RM_Record::RM_Record(){
-  size = INVALID_RECORD_SIZE; // initial contents of a record
-  data = NULL;
+// Default constructor
+RM_Record::RM_Record() {
+    // Set the valid flag to false
+    this->isValid = FALSE;
 }
 
-RM_Record::~RM_Record(){
-  if(data != NULL) // delete any data associated with the record
-    delete [] data;
+// Destructor
+RM_Record::~RM_Record() {
+    // Delete the data if it is a valid record
+    if (isValid) {
+        isValid = false;
+        delete[] pData;
+    }
 }
 
-/*
- * Copies contents of one RM_Record instance to another RM_Record instance
- */
-RM_Record& RM_Record::operator= (const RM_Record &record){
-  if (this != &record){
-    if(this->data != NULL)  // make sure the memory allocation is for the
-      delete [] data;       // correct size of the record
-    this->size = record.size;
-    this->data = new char[size];
-    memcpy(this->data, record.data, record.size);
-    this->rid = record.rid;
-  }
-  return (*this);
+// Copy constructor
+RM_Record::RM_Record(const RM_Record &rec) {
+    // Copy the data
+    memcpy(this->pData, rec.pData, rec.recordSize);
+
+    // Copy the rid, valid flag and record size
+    this->rid = rec.rid;
+    this->isValid = rec.isValid;
+    this->recordSize = rec.recordSize;
 }
 
-/*
- * Retrieves the pointer to the record data, only if the
- * record is associated with valid record data and size
- */
+// Overload =
+RM_Record& RM_Record::operator=(const RM_Record &rec) {
+    // Check for self-assignment
+    if (this != &rec) {
+        // Copy the data
+        memcpy(this->pData, rec.pData, rec.recordSize);
+
+        // Copy the rid, valid flag and record size
+        this->rid = rec.rid;
+        this->isValid = rec.isValid;
+        this->recordSize = rec.recordSize;
+    }
+
+    // Return a reference to this
+    return (*this);
+}
+
+// Method: GetData(char *&pData) const
+// Return the data corresponding to the record
 RC RM_Record::GetData(char *&pData) const {
-  if(data == NULL || size == INVALID_RECORD_SIZE)
-    return (RM_INVALIDRECORD);
-  pData = data;
-  return (0);
+    // Check if the record is valid
+    if (!isValid) {
+        return RM_RECORD_NOT_VALID;
+    }
+
+    // Point pData to the data in the record
+    pData = this->pData;
+
+    // Return OK
+    return OK_RC;
 }
 
-/*
- * Retrieves the RID of a record only if the RID  is valid
- */
+// Method: GetRid (RID &rid) const
+// Return the RID associated with the record
 RC RM_Record::GetRid (RID &rid) const {
-  RC rc;
-  if((rc = (this->rid).isValidRID()))
-    return rc;
-  rid = this->rid;
-  return (0);
+    // Check if the record is valid
+    if (!isValid) {
+        return RM_RECORD_NOT_VALID;
+    }
+
+    // Point rid to the RID in the record
+    rid = this->rid;
+
+    // Return OK
+    return OK_RC;
 }
-
-/*
- * Set the contents of this record object with specified data and RID.
- * the RID must be a valid RID.
- */
-RC RM_Record::SetRecord(RID rec_rid, char *recData, int rec_size){
-  RC rc;
-  if((rc = rec_rid.isValidRID()))
-    return RM_INVALIDRID;
-  if(rec_size <= 0 )
-    return RM_BADRECORDSIZE;
-  rid = rec_rid;
-
-  if(recData == NULL)
-    return RM_INVALIDRECORD;
-  size = rec_size;
-  if (data != NULL)
-    delete [] data;
-  data = new char[rec_size];
-  memcpy(data, recData, size);
-  return (0);
-}
-
-
