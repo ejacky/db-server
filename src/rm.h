@@ -162,6 +162,7 @@ public:
     RC OpenFile   (const char *fileName, RM_FileHandle &fileHandle);
 
     RC CloseFile  (RM_FileHandle &fileHandle);
+    RC Test(int recordSize);
 
 private:
     PF_Manager* pfManager;                   // PF_Manager object
