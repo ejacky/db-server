@@ -635,11 +635,27 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec)
 
 RC Test0(void)
 {
+    RC            rc;
+    RM_FileHandle fh;
+    
     printf("\ntest0 starting\n*****************************\n");
+
     printf("sizeof TestRec:%d\n", sizeof(TestRec));
     printf("findNumberRecords %d \n", rmm.Test(sizeof(TestRec)));
     printf("sizeof TestRec2:%d\n", sizeof(TestRec2));
     printf("findNumberRecords %d \n", rmm.Test(sizeof(TestRec2)));
+
+    if ((rc = CreateFile(FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile(FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = CloseFile(FILENAME, fh)))
+        return (rc);
+
+    LsFile(FILENAME);
+
+    if ((rc = DestroyFile(FILENAME)))
+        return (rc);
+
     printf("\ntest0 done\n*****************************\n");
 
 }

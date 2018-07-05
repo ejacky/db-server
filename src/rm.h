@@ -163,6 +163,8 @@ public:
 
     RC CloseFile  (RM_FileHandle &fileHandle);
 
+    RC Test       (int recordSize);
+
 private:
     PF_Manager* pfManager;                   // PF_Manager object
     int findNumberRecords(int recordSize);
