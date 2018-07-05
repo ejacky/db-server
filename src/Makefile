@@ -75,7 +75,11 @@ UTILS          = $(UTILS_SOURCES:.cc=)
 TESTS          = $(TESTER_SOURCES:.cc=)
 EXECUTABLES    = $(UTILS) $(TESTS)
 
+<<<<<<< HEAD
 LIBS           =  -lrm -lpf
+=======
+LIBS           = -lrm -lpf 
+>>>>>>> f26b82ca9ec6ae3d1942a9e608a5d571f55a91c0
 #LIBS           = -lparser -lql -lsm -lix -lrm -lpf -lex
 
 #

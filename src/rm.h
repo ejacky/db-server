@@ -162,6 +162,7 @@ public:
     RC OpenFile   (const char *fileName, RM_FileHandle &fileHandle);
 
     RC CloseFile  (RM_FileHandle &fileHandle);
+    RC Test(int recordSize);
 
     RC Test       (int recordSize);
 
